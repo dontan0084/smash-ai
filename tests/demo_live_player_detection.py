@@ -25,7 +25,7 @@ MODEL_PATH = (
     ROOT_DIR
     / "runs"
     / "player_detection"
-    / "player_v2"
+    / "player_v3"
     / "weights"
     / "best.pt"
 )

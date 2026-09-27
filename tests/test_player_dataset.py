@@ -140,8 +140,8 @@ def check_split(split: str):
 train_count = check_split("train")
 val_count = check_split("val")
 
-assert train_count == 160
-assert val_count == 40
+assert train_count == 280
+assert val_count == 100
 
 print()
 print("Player dataset test: OK")

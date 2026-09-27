@@ -40,6 +40,8 @@ def main():
     print()
     print("Training Player Detector v2")
 
+    model = YOLO("yolo26n.pt")
+
     results = model.train(
         data=str(DATA_YAML),
 
@@ -49,7 +51,7 @@ def main():
         workers=0,
 
         project=str(RUNS_DIR),
-        name="player_v2",
+        name="player_v3",
         exist_ok=True,
 
         patience=15,

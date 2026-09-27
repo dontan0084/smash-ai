@@ -6,8 +6,8 @@ import cv2
 from src.vision import CaptureVideoSource
 
 
-EVERY_N_FRAMES = 60
-MAX_IMAGES = 40
+EVERY_N_FRAMES = 12
+MAX_IMAGES = 60
 
 OUTPUT_ROOT = Path(
     "recordings/player_collection"

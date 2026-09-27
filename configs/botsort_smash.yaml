@@ -1,0 +1,28 @@
+tracker_type: botsort
+
+# 通常の関連付け
+track_high_thresh: 0.25
+
+# 既存Trackを救済する低confidence検出
+track_low_thresh: 0.08
+
+# 新しいIDを作るには少し高いconfidenceを要求
+new_track_thresh: 0.35
+
+# 一時的に見失ってもIDを保持
+track_buffer: 60
+
+# 少し大きく動いても同一物体として関連付けやすくする
+match_thresh: 0.85
+
+fuse_score: True
+
+# スマブラはカメラ自体が動くので有効のまま
+gmc_method: sparseOptFlow
+
+# 今はCPUが遅いのでReIDは使わない
+with_reid: False
+
+proximity_thresh: 0.5
+appearance_thresh: 0.8
+model: auto

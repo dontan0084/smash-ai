@@ -4,3 +4,9 @@ from .video_source import (
     FileVideoSource,
     CaptureVideoSource,
 )
+
+from .frame_sampler import sample_frames
+from .player_detector import (
+    PlayerDetection,
+    PlayerDetector,
+)

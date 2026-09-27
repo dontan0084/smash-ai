@@ -23,3 +23,11 @@ recordings/
 
 # Temporary files
 *.log
+
+# dataset
+recordings/
+datasets/player_detection/images/
+datasets/player_detection/labels/
+
+runs/
+*.pt

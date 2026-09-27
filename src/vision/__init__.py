@@ -14,3 +14,7 @@ from .player_tracker import (
     TrackedPlayer,
     PlayerTracker,
 )
+from .player_identity import (
+    LogicalPlayer,
+    PlayerIdentityManager,
+)

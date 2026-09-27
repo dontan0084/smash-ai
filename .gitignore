@@ -31,3 +31,9 @@ datasets/player_detection/labels/
 
 runs/
 *.pt
+
+datasets/
+
+# Datasets / archives
+datasets/
+*.zip

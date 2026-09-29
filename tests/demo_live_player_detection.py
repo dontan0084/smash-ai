@@ -34,7 +34,7 @@ MODEL_PATH = (
 detector = PlayerDetector(
     model_path=MODEL_PATH,
     confidence_threshold=0.25,
-    image_size=640,
+    image_size=320,
 )
 
 

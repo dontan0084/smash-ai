@@ -22,7 +22,7 @@ class PlayerDetector:
         self,
         model_path: str | Path,
         confidence_threshold: float = 0.25,
-        image_size: int = 640,
+        image_size: int | tuple[int, int] = 640
     ):
 
         self.model_path = Path(model_path)

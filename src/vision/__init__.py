@@ -18,3 +18,4 @@ from .player_identity import (
     LogicalPlayer,
     PlayerIdentityManager,
 )
+from .latest_frame_source import LatestFrameSource

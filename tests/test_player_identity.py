@@ -30,13 +30,17 @@ manager = PlayerIdentityManager()
 
 
 # ==========================================
+# frame 100
 # 最初の2人
 # ==========================================
 
-players = manager.update([
-    make_player(10, 200),
-    make_player(20, 1500),
-])
+players = manager.update(
+    [
+        make_player(10, 200),
+        make_player(20, 1500),
+    ],
+    frame_number=100,
+)
 
 assert players[0].visible
 assert players[1].visible
@@ -44,53 +48,104 @@ assert players[1].visible
 assert players[0].track_id == 10
 assert players[1].track_id == 20
 
+assert players[0].logical_id == 1
+assert players[1].logical_id == 2
+
 print("Initial assignment: OK")
 
 
 # ==========================================
-# 移動
+# frame 103
+# 3フレーム後に移動
 # ==========================================
 
-players = manager.update([
-    make_player(10, 300),
-    make_player(20, 1400),
-])
+players = manager.update(
+    [
+        make_player(10, 300),
+        make_player(20, 1400),
+    ],
+    frame_number=103,
+)
 
 assert players[0].track_id == 10
 assert players[1].track_id == 20
+
+assert players[0].visible
+assert players[1].visible
 
 print("Movement tracking: OK")
 
 
 # ==========================================
+# 速度計算の確認
+#
+# P1:
+# x=200 → 300
+# 3 frameで100px移動
+#
+# vx = 100 / 3
+# ==========================================
+
+expected_vx_p1 = 100 / 3
+
+assert abs(
+    players[0].vx
+    - expected_vx_p1
+) < 0.001
+
+expected_vx_p2 = -100 / 3
+
+assert abs(
+    players[1].vx
+    - expected_vx_p2
+) < 0.001
+
+print("Frame-aware velocity: OK")
+
+
+# ==========================================
+# frame 106
 # Player 1を一瞬見失う
 # ==========================================
 
-players = manager.update([
-    make_player(20, 1300),
-])
+players = manager.update(
+    [
+        make_player(20, 1300),
+    ],
+    frame_number=106,
+)
 
 assert players[0].visible is False
 assert players[1].visible is True
+
+assert players[0].missing_frames == 3
 
 print("Temporary loss: OK")
 
 
 # ==========================================
+# frame 109
 # Player 1が別Tracker IDで再登場
+#
+# track_id:
+# 10 → 99
+#
+# ただしLogical PlayerはP1のまま
 # ==========================================
 
-players = manager.update([
-    make_player(99, 500),
-    make_player(20, 1200),
-])
+players = manager.update(
+    [
+        make_player(99, 500),
+        make_player(20, 1200),
+    ],
+    frame_number=109,
+)
 
-# Tracker IDは変わったが、
-# Logical Player 1のまま
 assert players[0].visible is True
 assert players[0].track_id == 99
 assert players[0].logical_id == 1
 
+assert players[1].visible is True
 assert players[1].track_id == 20
 assert players[1].logical_id == 2
 

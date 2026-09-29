@@ -117,7 +117,8 @@ def main():
             )
 
             players = identity.update(
-                tracks
+                observations,
+                frame_number=frame.frame_number,
             )
 
             inference_time = (

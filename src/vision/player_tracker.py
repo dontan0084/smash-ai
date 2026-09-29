@@ -7,7 +7,7 @@ from ultralytics import YOLO
 
 @dataclass
 class TrackedPlayer:
-    track_id: int
+    track_id: int | None
 
     x1: int
     y1: int

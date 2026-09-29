@@ -21,12 +21,17 @@ class LogicalPlayer:
     center_x: float | None = None
     center_y: float | None = None
 
+    # 1キャプチャフレームあたりの移動量 [px/frame]
     vx: float = 0.0
     vy: float = 0.0
 
     confidence: float | None = None
 
+    # 最後に見えてから何キャプチャフレーム経過したか
     missing_frames: int = 0
+
+    # 最後に検出されたCaptureVideoSource上のframe番号
+    last_seen_frame: int | None = None
 
 
 class PlayerIdentityManager:
@@ -47,19 +52,20 @@ class PlayerIdentityManager:
     def update(
         self,
         detections: list[TrackedPlayer],
+        frame_number: int,
     ) -> list[LogicalPlayer]:
 
-        # このupdateで観測できたかをリセット
+        # 今回のupdateで観測できたかを一旦リセット
         for player in self.players:
             player.visible = False
 
-        assigned_players = set()
-        assigned_detections = set()
+        assigned_players: set[int] = set()
+        assigned_detections: set[int] = set()
 
         candidates = []
 
         # ======================================
-        # 過去位置 + 速度から対応候補を作る
+        # 過去位置 + 速度から現在位置を予測
         # ======================================
 
         for player_index, player in enumerate(
@@ -69,36 +75,50 @@ class PlayerIdentityManager:
             if not player.initialized:
                 continue
 
-            if (
-                player.missing_frames
-                > self.max_missing_frames
-            ):
+            if player.last_seen_frame is None:
+                continue
+
+            # 最後に見えてから実際に何capture frame経過したか
+            dt = max(
+                1,
+                frame_number - player.last_seen_frame,
+            )
+
+            # 長時間見失っているplayerは
+            # 位置だけでは安全に対応できない
+            if dt > self.max_missing_frames:
                 continue
 
             predicted_x = (
                 player.center_x
-                + player.vx
-                * (player.missing_frames + 1)
+                + player.vx * dt
             )
 
             predicted_y = (
                 player.center_y
-                + player.vy
-                * (player.missing_frames + 1)
+                + player.vy * dt
             )
 
-            for detection_index, detection in enumerate(
-                detections
-            ):
+            for (
+                detection_index,
+                detection,
+            ) in enumerate(detections):
 
                 distance = hypot(
-                    detection.center_x - predicted_x,
-                    detection.center_y - predicted_y,
+                    detection.center_x
+                    - predicted_x,
+                    detection.center_y
+                    - predicted_y,
                 )
 
-                # Tracker IDが同じなら少し優先
+                # Trackerを使う場合、
+                # 同じtrack_idなら対応候補として優先
+                #
+                # Detector直結の場合は
+                # track_id=Noneなので何も起きない
                 if (
                     player.track_id is not None
+                    and detection.track_id is not None
                     and player.track_id
                     == detection.track_id
                 ):
@@ -112,12 +132,13 @@ class PlayerIdentityManager:
                     )
                 )
 
+        # 距離の近い対応から試す
         candidates.sort(
             key=lambda item: item[0]
         )
 
         # ======================================
-        # 距離が近い組み合わせから割り当て
+        # DetectionとLogicalPlayerを対応付け
         # ======================================
 
         for (
@@ -145,8 +166,13 @@ class PlayerIdentityManager:
                 continue
 
             self._assign(
-                self.players[player_index],
-                detections[detection_index],
+                player=self.players[
+                    player_index
+                ],
+                detection=detections[
+                    detection_index
+                ],
+                frame_number=frame_number,
             )
 
             assigned_players.add(
@@ -158,35 +184,62 @@ class PlayerIdentityManager:
             )
 
         # ======================================
-        # 未割り当てDetection
-        # 新規または長時間lostしたSlotへ入れる
+        # まだ割り当てられていないDetection
         # ======================================
 
         remaining_detections = [
             detection
             for index, detection
             in enumerate(detections)
-            if index not in assigned_detections
+            if index
+            not in assigned_detections
         ]
 
+        # 初期状態では左側をP1、
+        # 右側をP2として仮割り当て
         remaining_detections.sort(
             key=lambda detection:
             detection.center_x
         )
 
-        free_players = [
-            player
-            for index, player
-            in enumerate(self.players)
-            if (
-                index not in assigned_players
-                and (
-                    not player.initialized
-                    or player.missing_frames
-                    > self.max_missing_frames
+        # ======================================
+        # 使用可能なLogicalPlayer slotを探す
+        # ======================================
+
+        free_players = []
+
+        for index, player in enumerate(
+            self.players
+        ):
+
+            if index in assigned_players:
+                continue
+
+            if not player.initialized:
+                free_players.append(
+                    player
                 )
+                continue
+
+            if player.last_seen_frame is None:
+                free_players.append(
+                    player
+                )
+                continue
+
+            missing_frames = (
+                frame_number
+                - player.last_seen_frame
             )
-        ]
+
+            # 長時間lostしていたslotは再利用可能
+            if (
+                missing_frames
+                > self.max_missing_frames
+            ):
+                free_players.append(
+                    player
+                )
 
         free_players.sort(
             key=lambda player:
@@ -197,9 +250,11 @@ class PlayerIdentityManager:
             free_players,
             remaining_detections,
         ):
+
             self._assign(
-                player,
-                detection,
+                player=player,
+                detection=detection,
+                frame_number=frame_number,
             )
 
             assigned_players.add(
@@ -207,7 +262,7 @@ class PlayerIdentityManager:
             )
 
         # ======================================
-        # 見失ったPlayer
+        # 今回見つからなかったPlayer
         # ======================================
 
         for index, player in enumerate(
@@ -217,17 +272,31 @@ class PlayerIdentityManager:
             if index in assigned_players:
                 continue
 
-            if player.initialized:
-                player.missing_frames += 1
-                player.visible = False
+            if not player.initialized:
+                continue
 
-                if (
-                    player.missing_frames
-                    > self.max_missing_frames
-                ):
-                    player.track_id = None
-                    player.vx = 0.0
-                    player.vy = 0.0
+            player.visible = False
+
+            if player.last_seen_frame is not None:
+
+                # update回数ではなく、
+                # 実際のcapture frame差を使う
+                player.missing_frames = max(
+                    0,
+                    frame_number
+                    - player.last_seen_frame,
+                )
+
+            # 一定時間以上lostした場合は
+            # 一時Tracker IDと速度を捨てる
+            if (
+                player.missing_frames
+                > self.max_missing_frames
+            ):
+                player.track_id = None
+
+                player.vx = 0.0
+                player.vy = 0.0
 
         return [
             replace(player)
@@ -238,32 +307,47 @@ class PlayerIdentityManager:
         self,
         player: LogicalPlayer,
         detection: TrackedPlayer,
+        frame_number: int,
     ) -> None:
 
         new_x = detection.center_x
         new_y = detection.center_y
 
+        # ======================================
+        # 速度計算
+        # ======================================
+
         if (
             player.initialized
             and player.center_x is not None
             and player.center_y is not None
+            and player.last_seen_frame is not None
         ):
-            elapsed = max(
+
+            dt = max(
                 1,
-                player.missing_frames + 1,
+                frame_number
+                - player.last_seen_frame,
             )
 
             player.vx = (
-                new_x - player.center_x
-            ) / elapsed
+                new_x
+                - player.center_x
+            ) / dt
 
             player.vy = (
-                new_y - player.center_y
-            ) / elapsed
+                new_y
+                - player.center_y
+            ) / dt
 
         else:
+
             player.vx = 0.0
             player.vy = 0.0
+
+        # ======================================
+        # 最新状態を保存
+        # ======================================
 
         player.initialized = True
         player.visible = True
@@ -285,3 +369,8 @@ class PlayerIdentityManager:
         )
 
         player.missing_frames = 0
+
+        # ここが今回特に重要
+        player.last_seen_frame = (
+            frame_number
+        )

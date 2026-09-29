@@ -151,6 +151,16 @@ assert players[1].logical_id == 2
 
 print("Re-identification after ID change: OK")
 
+# ==========================================
+# 足元座標
+# ==========================================
+
+p1 = players[0]
+
+assert p1.foot_x == 500
+assert p1.foot_y == 550
+
+print("Foot position: OK")
 
 print()
 print("Player Identity test: OK")

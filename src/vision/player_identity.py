@@ -21,17 +21,34 @@ class LogicalPlayer:
     center_x: float | None = None
     center_y: float | None = None
 
-    # 1キャプチャフレームあたりの移動量 [px/frame]
     vx: float = 0.0
     vy: float = 0.0
 
     confidence: float | None = None
 
-    # 最後に見えてから何キャプチャフレーム経過したか
     missing_frames: int = 0
-
-    # 最後に検出されたCaptureVideoSource上のframe番号
     last_seen_frame: int | None = None
+
+    @property
+    def foot_x(self) -> float | None:
+
+        if (
+            self.x1 is None
+            or self.x2 is None
+        ):
+            return None
+
+        return (
+            self.x1 + self.x2
+        ) / 2
+
+    @property
+    def foot_y(self) -> float | None:
+
+        if self.y2 is None:
+            return None
+
+        return float(self.y2)
 
 
 class PlayerIdentityManager:
